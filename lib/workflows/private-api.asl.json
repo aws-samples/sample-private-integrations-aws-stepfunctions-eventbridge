@@ -1,0 +1,30 @@
+{
+  "QueryLanguage": "JSONata",
+  "Comment": "Workflow for calling private API through VPC Lattice",
+  "StartAt": "CallPrivateApi",
+  "States": {
+    "CallPrivateApi": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::http:invoke",
+      "Arguments": {
+        "ApiEndpoint": "${EndpointUrl}",
+        "Method": "GET",
+        "InvocationConfig": {
+          "ConnectionArn": "${ConnectionArn}"
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "BackoffRate": 2,
+          "IntervalSeconds": 1,
+          "MaxAttempts": 3,
+          "JitterStrategy": "FULL"
+        }
+      ],
+      "End": true
+    }
+  }
+}
