@@ -1,9 +1,10 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import * as events from 'aws-cdk-lib/aws-events';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
-import * as iam from 'aws-cdk-lib/aws-iam';
+import * as sfntasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import * as iam from 'aws-cdk-lib/aws-iam';
+import * as events from 'aws-cdk-lib/aws-events';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -12,6 +13,7 @@ interface WorkflowStackProps extends cdk.StackProps {
   subDomain: string;
   apiKey: string;
   resourceConfigArn: string;
+
 }
 
 export class WorkflowStack extends cdk.Stack {
@@ -34,14 +36,41 @@ export class WorkflowStack extends cdk.Stack {
       },
     );
 
-    const stateMachineRole = new iam.Role(this, 'StateMachineRole', {
-      assumedBy: new iam.ServicePrincipal('states.amazonaws.com'),
+
+    // Create EventBridge event bus
+    const eventBus = new events.EventBus(this, 'ReviewAnalyzerEventBus', {
+      eventBusName: 'review-analyzer-bus'
     });
+
+    // Create IAM role for Step Functions
+    const stateMachineRole = new iam.Role(this, 'StateMachineRole', {
+      assumedBy: new iam.ServicePrincipal('states.amazonaws.com')
+    });
+
+    // Add permissions for Bedrock
+    stateMachineRole.addToPolicy(new iam.PolicyStatement({
+      actions: ['bedrock:InvokeModel'],
+      resources: ['arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-micro-v1:0']
+    }));
+
+    // Add permissions for EventBridge
+    stateMachineRole.addToPolicy(new iam.PolicyStatement({
+      actions: ['events:PutEvents'],
+      resources: [eventBus.eventBusArn]
+    }));
+
+    // Add permissions for HTTP endpoint
+    stateMachineRole.addToPolicy(new iam.PolicyStatement({
+      actions: [
+        'states:InvokeHTTPEndpoint',
+        'states:StartExecution'
+      ],
+      resources: ['*']
+    }));
 
     stateMachineRole.addToPolicy(new iam.PolicyStatement({
       actions: [
         'events:InvokeApiDestination',
-        'events:InvokeConnection',
         'events:RetrieveConnectionCredentials'
       ],
       resources: [connection.connectionArn]
@@ -55,22 +84,19 @@ export class WorkflowStack extends cdk.Stack {
       resources: ['*']
     }));
 
-    stateMachineRole.addToPolicy(new iam.PolicyStatement({
-      actions: ['states:InvokeHTTPEndpoint'],
-      resources: ['*']
-    }));
 
     // Load and substitute values in the ASL definition
     const aslPath = path.join(__dirname, 'workflows', 'private-api.asl.json');
     let definitionString = fs.readFileSync(aslPath, 'utf-8');
-    
+
     // Replace placeholders with actual values
     definitionString = definitionString
       .replace('${EndpointUrl}', `https://${props.subDomain}.${props.domainName}`)
-      .replace('${ConnectionArn}', connection.connectionArn);
+      .replace('${ConnectionArn}', connection.connectionArn)
+      .replace('${EventBusName}', eventBus.eventBusName);
 
     // Create the state machine with the substituted ASL definition
-    new sfn.StateMachine(this, 'PrivateApiWorkflow', {
+    new sfn.StateMachine(this, 'ReviewProcessingStateMachine', {
       definitionBody: sfn.DefinitionBody.fromString(definitionString),
       tracingEnabled: true,
       stateMachineType: sfn.StateMachineType.STANDARD,

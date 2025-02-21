@@ -1,29 +1,95 @@
 {
-  "QueryLanguage": "JSONata",
-  "Comment": "Workflow for calling private API through VPC Lattice",
-  "StartAt": "CallPrivateApi",
+  "Comment": "Workflow for processing data with Bedrock and classifying reviews",
+  "StartAt": "ProcessData",
   "States": {
-    "CallPrivateApi": {
-      "Type": "Task",
-      "Resource": "arn:aws:states:::http:invoke",
-      "Arguments": {
-        "ApiEndpoint": "${EndpointUrl}",
-        "Method": "GET",
-        "InvocationConfig": {
-          "ConnectionArn": "${ConnectionArn}"
+    "ProcessData": {
+      "Type": "Map",
+      "ItemProcessor": {
+        "ProcessorConfig": {
+          "Mode": "DISTRIBUTED",
+          "ExecutionType": "STANDARD"
+        },
+        "StartAt": "InvokeBedrockAPI",
+        "States": {
+          "InvokeBedrockAPI": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::bedrock:invokeModel",
+            "Parameters": {
+              "ModelId": "amazon.nova-micro-v1:0",
+              "ContentType": "application/json",
+              "Body": {
+                "messages":  [{"role": "user", "content": [{"text.$": "$.reviewText"}]}],
+                "inferenceConfig": {"max_new_tokens": 300, "top_p": 0.9, "top_k": 20, "temperature": 1.0},
+                "system": [
+                  { "text": "Act as a reviewer. When the user provides you with a reviewText, please analyze and provide a single word answer - fake or real" }
+              ]
+                }
+            },
+            "Next": "ClassifyReview"
+          },
+          "ClassifyReview": {
+            "Type": "Choice",
+            "Choices": [
+              {
+                "Variable": "$.Body.output.message.content[0].text",
+                "StringMatches": "*fake*",
+                "Next": "PublishToEventBridge"
+              },
+              {
+                "Variable": "$.Body.output.message.content[0].text",
+                "StringMatches": "*real*",
+                "Next": "CallHTTPEndpoint"
+              }
+            ],
+            "Default": "CallHTTPEndpoint"
+          },
+          "PublishToEventBridge": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::events:putEvents",
+            "Parameters": {
+              "Entries": [
+                {
+                  "Source": "review.analyzer",
+                  "DetailType": "Fake Review findings",
+                  "Detail": {
+                    "originalInput.$": "$$.Execution.Input",
+                    "analysis.$": "$.Body.output.message.content[0].text"
+                  },
+                  "EventBusName": "${EventBusName}"
+                }
+              ]
+            },
+            "End": true
+          },
+          "CallHTTPEndpoint": {
+            "QueryLanguage": "JSONata",
+            "Type": "Task",
+            "Resource": "arn:aws:states:::http:invoke",
+            "Arguments": {
+              "ApiEndpoint": "${EndpointUrl}",
+              "Method": "GET",
+              "InvocationConfig": {
+                "ConnectionArn": "${ConnectionArn}"
+              }
+            },
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "States.ALL"
+                ],
+                "BackoffRate": 2,
+                "IntervalSeconds": 1,
+                "MaxAttempts": 3,
+                "JitterStrategy": "FULL"
+              }
+            ],
+            "End": true
+      
+          }
         }
       },
-      "Retry": [
-        {
-          "ErrorEquals": [
-            "States.ALL"
-          ],
-          "BackoffRate": 2,
-          "IntervalSeconds": 1,
-          "MaxAttempts": 3,
-          "JitterStrategy": "FULL"
-        }
-      ],
+      "ItemsPath": "$.items",
+      "MaxConcurrency": 100,
       "End": true
     }
   }

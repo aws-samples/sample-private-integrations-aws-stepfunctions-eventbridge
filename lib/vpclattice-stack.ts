@@ -28,7 +28,7 @@ export class VpcLatticeStack extends cdk.Stack {
     );
 
     const resourceGateway = new lattice.CfnResourceGateway(this, 'ResourceGateway', {
-      name: 'private-api-access',
+      name: 'private-api-rg',
       ipAddressType: 'IPV4',
       vpcIdentifier: props.vpc.vpcId,
       subnetIds: props.vpc.selectSubnets({
@@ -41,7 +41,7 @@ export class VpcLatticeStack extends cdk.Stack {
       this,
       'ResourceConfig',
       {
-        name: 'sf-private-api',
+        name: 'sf-private-rc',
         portRanges: ['443'],
         resourceGatewayId: resourceGateway.ref,
         resourceConfigurationType: 'SINGLE',
@@ -56,11 +56,11 @@ export class VpcLatticeStack extends cdk.Stack {
       },
     );
 
-    new ram.CfnResourceShare(this, 'ResourceShare', {
-      name: 'private-api-access',
-      allowExternalPrincipals: true,
-      principals: [props.shareAccount],
-      resourceArns: [this.resourceConfig.attrArn],
-    });
+    // new ram.CfnResourceShare(this, 'ResourceShare', {
+    //   name: 'private-api-access',
+    //   allowExternalPrincipals: true,
+    //   principals: [props.shareAccount],
+    //   resourceArns: [this.resourceConfig.attrArn],
+    // });
   }
 }

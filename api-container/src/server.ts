@@ -1,4 +1,5 @@
 import express, { Request, Response, NextFunction } from 'express';
+import os from 'os';
 
 const app = express();
 const port: number = process.env.PORT ? parseInt(process.env.PORT) : 80;
@@ -23,6 +24,7 @@ const authenticateApiKey = (req: Request, res: Response<ErrorResponse>, next: Ne
   }
   
   next();
+  return;
 };
 
 // Health check endpoint - no authentication required, just returns 200
@@ -35,7 +37,7 @@ app.use(authenticateApiKey);
 
 app.get('/', (_req: Request, res: Response<MainResponse>) => {
   res.json({
-    message: 'Hello from the backend!',
+    message: 'Successfully processed the reviews',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development'
   });
