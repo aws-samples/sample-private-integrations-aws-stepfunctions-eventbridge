@@ -24,11 +24,11 @@ export class VpcLatticeStack extends cdk.Stack {
     rgSecurityGroup.addEgressRule(
       ec2.Peer.ipv4(props.vpc.vpcCidrBlock),
       ec2.Port.tcp(443),
-      'Allow HTTPS traffic from Resource Gateway',
+      'Allow HTTPS traffic from the VPC Resource Gateway',
     );
 
     const resourceGateway = new lattice.CfnResourceGateway(this, 'ResourceGateway', {
-      name: 'private-api-rg',
+      name: 'user_reviews-private-gateway',
       ipAddressType: 'IPV4',
       vpcIdentifier: props.vpc.vpcId,
       subnetIds: props.vpc.selectSubnets({
@@ -41,7 +41,7 @@ export class VpcLatticeStack extends cdk.Stack {
       this,
       'ResourceConfig',
       {
-        name: 'sf-private-rc',
+        name: 'user_reviews-private-configuration',
         portRanges: ['443'],
         resourceGatewayId: resourceGateway.ref,
         resourceConfigurationType: 'SINGLE',

@@ -1,8 +1,6 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
-import * as sfntasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
-import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as path from 'path';
@@ -38,8 +36,8 @@ export class WorkflowStack extends cdk.Stack {
 
 
     // Create EventBridge event bus
-    const eventBus = new events.EventBus(this, 'ReviewAnalyzerEventBus', {
-      eventBusName: 'review-analyzer-bus'
+    const eventBus = new events.EventBus(this, 'PrivateIntegrationsEventBus', {
+      eventBusName: 'private-integrations-bus'
     });
 
     // Create IAM role for Step Functions
@@ -84,7 +82,6 @@ export class WorkflowStack extends cdk.Stack {
       resources: ['*']
     }));
 
-
     // Load and substitute values in the ASL definition
     const aslPath = path.join(__dirname, 'workflows', 'private-api.asl.json');
     let definitionString = fs.readFileSync(aslPath, 'utf-8');
@@ -96,7 +93,7 @@ export class WorkflowStack extends cdk.Stack {
       .replace('${EventBusName}', eventBus.eventBusName);
 
     // Create the state machine with the substituted ASL definition
-    new sfn.StateMachine(this, 'ReviewProcessingStateMachine', {
+    new sfn.StateMachine(this, 'UserReviewProcessingStateMachine', {
       definitionBody: sfn.DefinitionBody.fromString(definitionString),
       tracingEnabled: true,
       stateMachineType: sfn.StateMachineType.STANDARD,
