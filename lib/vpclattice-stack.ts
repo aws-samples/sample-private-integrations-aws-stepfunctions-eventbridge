@@ -56,11 +56,11 @@ export class VpcLatticeStack extends cdk.Stack {
       },
     );
 
-    // new ram.CfnResourceShare(this, 'ResourceShare', {
-    //   name: 'private-api-access',
-    //   allowExternalPrincipals: true,
-    //   principals: [props.shareAccount],
-    //   resourceArns: [this.resourceConfig.attrArn],
-    // });
+    new ram.CfnResourceShare(this, 'ResourceShare', {
+      name: 'private-api-access',
+      allowExternalPrincipals: true,
+      principals: [props.shareAccount],
+      resourceArns: [this.resourceConfig.attrArn],
+    });
   }
 }
