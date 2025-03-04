@@ -36,8 +36,8 @@ export class WorkflowStack extends cdk.Stack {
 
 
     // Create EventBridge event bus
-    const eventBus = new events.EventBus(this, 'PrivateIntegrationsEventBus', {
-      eventBusName: 'private-integrations-bus'
+    const eventBus = new events.EventBus(this, 'ReviewAnalyzerEventBus', {
+      eventBusName: 'review-analyzer-bus'
     });
 
     // Create IAM role for Step Functions
@@ -93,7 +93,7 @@ export class WorkflowStack extends cdk.Stack {
       .replace('${EventBusName}', eventBus.eventBusName);
 
     // Create the state machine with the substituted ASL definition
-    new sfn.StateMachine(this, 'UserReviewProcessingStateMachine', {
+    new sfn.StateMachine(this, 'ReviewProcessingWorkflow', {
       definitionBody: sfn.DefinitionBody.fromString(definitionString),
       tracingEnabled: true,
       stateMachineType: sfn.StateMachineType.STANDARD,
