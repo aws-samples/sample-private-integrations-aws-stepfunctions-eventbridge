@@ -1,8 +1,8 @@
 # Simplifying private API integrations with Amazon EventBridge and AWS Step Functions
 
-In December 2024, AWS [announced](https://aws.amazon.com/about-aws/whats-new/2024/12/amazon-eventbridge-step-functions-integration-private-apis/) that Amazon EventBridge and AWS Step Functions support integration with private APIs using AWS PrivateLink and Amazon VPC Lattice. This feature allows users to integrate applications seamlessly across private networks, on-premises infrastructure, and cloud platforms. It provides operational simplicity, enabling secure and controlled communication between services within a Virtual Private Cloud (VPC).  
+In December 2024, AWS [announced](https://aws.amazon.com/about-aws/whats-new/2024/12/amazon-eventbridge-step-functions-integration-private-apis/) Amazon EventBridge and AWS Step Functions supports integration with private APIs using AWS PrivateLink and Amazon VPC Lattice. This feature allows users to integrate applications seamlessly across private networks, on-premises infrastructure, and cloud platforms. It provides operational simplicity, enabling secure and controlled communication between services within a Virtual Private Cloud (VPC).  
 
-This CDK project explores how to leverage this new capability to integrate Step Functions with private APIs, making application interactions across private networks more efficient and secure. The infrastructure is split into logical stacks for better maintainability and reuse. See the accompaning [blog post]()
+This CDK project explores how to leverage this new capability to integrate Step Functions with private APIs, making application interactions across private networks more efficient and secure. The infrastructure is split into logical stacks for better maintainability and reuse. See the accompaning [blog post](https://aws.amazon.com/blogs/aws/simplify-integrations-with-private-apis-using-amazon-eventbridge-and-aws-step-functions/)
 
 ## Workload overview
 
