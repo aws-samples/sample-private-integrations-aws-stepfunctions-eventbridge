@@ -1,6 +1,37 @@
-# ECS Private API with Shared Resource Pattern
+# Simplifying private API integrations with Amazon EventBridge and AWS Step Functions
 
-This CDK project deploys a private ECS API service with ALB and VPC Lattice for shared resource access. The infrastructure is split into logical stacks for better maintainability and reuse.
+In December 2024, AWS [announced](https://aws.amazon.com/about-aws/whats-new/2024/12/amazon-eventbridge-step-functions-integration-private-apis/) that Amazon EventBridge and AWS Step Functions support integration with private APIs using AWS PrivateLink and Amazon VPC Lattice. This feature allows users to integrate applications seamlessly across private networks, on-premises infrastructure, and cloud platforms. It provides operational simplicity, enabling secure and controlled communication between services within a Virtual Private Cloud (VPC).  
+
+This CDK project explores how to leverage this new capability to integrate Step Functions with private APIs, making application interactions across private networks more efficient and secure. The infrastructure is split into logical stacks for better maintainability and reuse. See the accompaning [blog post]()
+
+## Workload overview
+
+To illustrate how Step Functions invoke private HTTPS APIs, consider the following workflow that classifies product reviews as fake or real. 
+
+1.	The Step Functions workflow processes an array of product reviews using Distributed Map. 
+2.	It involves calling the Amazon Nova Micro model through Amazon Bedrock to classify the review text. 
+3.	If a review is classified as fake, then the workflow publishes an event to an EventBridge bus, providing a flexible integration for potential downstream analysis or notifications. 
+4.	If a review is classified as real, then Step Functions calls the private HTTPS endpoint, using DNS address to further process the reviews. 
+5.	This private API is hosted in AWS Fargate behind an internal Application Load Balancer (ALB) within a VPC. 
+
+![alt text](images/image.png)
+
+## Prerequisites
+
+Before setting up the private integration, create an Amazon Route53 public hosted zone with a registered domain (such as api.com), and an AWS Certificate Manager (ACM) certificate corresponding to the domain. 
+
+- Node.js 20.x or later
+- AWS CDK CLI v2
+- AWS credentials configured
+- Docker or Finch (for building container images)
+- Domain name managed by Route53
+- ACM certificate for your domain
+- create an [environment file](.env.example) with the required parameters
+
+### Container Runtime
+This project can use either Docker or Finch for building container images. Ensure you have one of these installed:
+- Docker Desktop or Docker Engine
+- Finch (docker-compatible container runtime)
 
 ## Architecture
 
@@ -16,60 +47,42 @@ The project creates the following AWS resources:
 - An EventBridge connection to connect to the private API
 - AWS Step Functions to handle the workflow and to connect to the private ECS resoruce. 
 
-In this demo, we will build a sample application workflow that categorizes the user reviews as genuine or fake using the new Amazon Nova Micro model to enhace the User's shopping profiles.When a review is identified as fake, an event is published to EventBridge which can subsequently trigger actions on the associated user profile. Conversely if a review is classified as genuine, AWS Step Functions invokes a private HTTPS endpoint. For the purposes of this demo, a sample response is returned by the ECS backend. In real-world scenario, this endpoint could be utilized to assign promotions, award points, or add benefits to the user's profile. 
-
-![](./images/combined.png)
-
 ### Stack Structure
 
 The infrastructure is divided into the following stacks:
 
-1. **NetworkStack**: Base networking infrastructure
+1. **[NetworkStack](./lib/network-stack.ts)**: Base networking infrastructure
    - VPC
    - Public and private subnets
    - Internet Gateway
    - NAT Gateways
 
-2. **ClusterStack**: ECS cluster configuration
+2. **[ClusterStack](./lib/cluster-stack.ts)**: ECS cluster configuration
    - ECS Fargate cluster
    - Cluster security group
 
-3. **ServiceStack**: Application components
+3. **[ServiceStack](./lib/service-stack.ts)**: Application components
    - ECS service and task definition
    - Application Load Balancer
    - Security groups
    - Route53 records
    - ACM certificate integration
 
-4. **VpcLatticeStack**: Shared resource configuration
+4. **[VpcLatticeStack](./lib/vpclattice-stack.ts)**: Shared resource configuration
    - VPC Lattice resource gateway
    - Resource configuration for private API access
    - RAM configuration for sharing the private endpoint with a secondary account
 
-5. **WorkflowStack**: Demonstration application outside of VPC
+5. **[WorkflowStack](./lib/workflow-stack.ts)**: Demonstration application outside of VPC
    - Amazon EventBridge connection
    - AWS Step Functions workflow with Distributed Map
-
-## Prerequisites
-
-- Node.js 16.x or later
-- AWS CDK CLI v2
-- AWS credentials configured
-- Docker or Finch (for building container images)
-- Domain name managed by Route53
-- ACM certificate for your domain
-
-### Container Runtime
-This project can use either Docker or Finch for building container images. Ensure you have one of these installed:
-- Docker Desktop or Docker Engine
-- Finch (docker-compatible container runtime)
 
 ## Setup
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
-cd <project-directory>
+git clone https://github.com/aws-samples/sample-private-integrations-aws-stepfunctions-eventbridge.git
+cd sample-private-integrations-aws-stepfunctions-eventbridge.git
 ```
 
 2. Install dependencies:
@@ -111,7 +124,7 @@ npm run deploy:workflow
 
 ## Test the workflow:
 
-Use the following JSON as an input to Step Functions. You can find the sample JSON in the test folder. 
+Use the following JSON as an input to Step Functions.
 
 ```
 {
@@ -248,6 +261,13 @@ Use the following JSON as an input to Step Functions. You can find the sample JS
 
 ```
 
+The following results shows the Step Functions execution where the review is classified as real and successfully invokes the private HTTPS endpoint.
+
+![alt text](images/real.png)
+
+If the reviews are classified as fake, they are sent to Eventbridge bus where you can have further processing/investigations.
+
+![alt text](images/fake.png)
 
 ## Clean Up
 
