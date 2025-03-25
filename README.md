@@ -14,7 +14,7 @@ To illustrate how Step Functions invoke private HTTPS APIs, consider the followi
 4.	If a review is classified as real, then Step Functions calls the private HTTPS endpoint, using DNS address to further process the reviews. 
 5.	This private API is hosted in AWS Fargate behind an internal Application Load Balancer (ALB) within a VPC. 
 
-![alt text](images/image.png)
+![alt text](images/overall.png)
 
 ## Prerequisites
 
